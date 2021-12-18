@@ -103,7 +103,7 @@ namespace ConnectFour
       return possibleCells;
     }
 
-    // Renvoie la liste des colonnes où le joueur peut lâcher une pièce
+    // Get columns that are not full yet
     public List<int> GetPossibleDrops ()
     {
       List<int> possibleDrops = new List<int> ();
@@ -118,7 +118,7 @@ namespace ConnectFour
       return possibleDrops;
     }
      
-    // renvoie un mouvement aléatoire parmi tous ceux possibles
+    // Randomly select from possible moves
     public int GetRandomMove ()
     {
       List<int> moves = GetPossibleDrops ();
@@ -130,7 +130,7 @@ namespace ConnectFour
       return -1;
     }
 
-		// renvoie un mouvement aléatoire parmi tous ceux possibles
+		// Randomly select from possible moves
 		public int GetRandomMove (System.Random r)
 		{
 			List<int> moves = GetPossibleDrops ();

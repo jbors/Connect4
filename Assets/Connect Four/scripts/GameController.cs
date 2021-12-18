@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,7 @@ namespace ConnectFour
     [Range (1, 8)]
     public int parallelProcesses = 2;
     [Range (7, 10000)]
-    public int MCTS_Iterations = 1000;
+    public int monte_carlo_runs = 1000;
 
     [Tooltip ("Shows column number next to its probability.")]
     public bool log_column = false;
@@ -127,92 +128,178 @@ namespace ConnectFour
     {
       Vector3 spawnPos = Camera.main.ScreenToWorldPoint (Input.mousePosition);
 
-      if (!field.IsPlayersTurn) {
+      int chosenColumn = 0;
 
-        int column;
-
-
-        // Inutile de lancer MCST le premier tour
-        if (field.PiecesNumber != 0) {
-          // One event is used for each MCTS.
-          ManualResetEvent[] doneEvents = new ManualResetEvent[parallelProcesses];
-          MonteCarloSearchTree[] trees = new MonteCarloSearchTree[parallelProcesses];
-
-          for (int i = 0; i < parallelProcesses; i++) {
-            doneEvents [i] = new ManualResetEvent (false);
-            trees[i] = new MonteCarloSearchTree (field, doneEvents [i], MCTS_Iterations);
-            ThreadPool.QueueUserWorkItem( new WaitCallback(ExpandTree), trees [i]);
+      //AI move
+      if (!field.IsPlayersTurn)
+      {
+        //Play randomly on first move
+        if (field.PiecesNumber != 0)
+        {
+          //TODO: determine best move out of possible moves
+          List<int> moves = field.GetPossibleDrops();
+          
+          Field[] simulatedFields = new Field[moves.Count];
+          for (int i = 0; i < moves.Count; i++)
+          {
+            //Simulate playing the move to evaluate
+            Field simField = field.Clone();
+            simField.DropInColumn(moves[i]);
+            simField.SwitchPlayer();
+            simulatedFields[i] = simField;
           }
-				
-          WaitHandle.WaitAll(doneEvents);
+          List<int>[] scores = new List<int>[moves.Count];
+          for (int i = 0; i < scores.Length; i++)
+          {
+            scores[i] = new List<int>();
+          }
 
-          //regrouping all results
-          Node rootNode = new Node ();
-          string log = "";
-
-          for (int i = 0; i < parallelProcesses; i++) {
-
-            log += "( ";
-            var sortedChildren = (List<KeyValuePair<Node, int>>)trees [i].rootNode.children.ToList ();
-            sortedChildren.Sort((pair1,pair2) => pair1.Value.CompareTo(pair2.Value));
-
-            foreach (var child in sortedChildren) {
-
-              if (log_column)
-                log += child.Value + ": ";
-              log += (int) ( ((double) child.Key.wins / (double) child.Key.plays) * 100) + "% | ";
-
-              if (!rootNode.children.ContainsValue (child.Value)) {
-                Node rootChild = new Node ();
-                rootChild.wins = child.Key.wins;
-                rootChild.plays = child.Key.plays;
-                rootNode.children.Add (rootChild, child.Value);
-              } else {
-                Node rootChild = rootNode.children.First( p => p.Value == child.Value ).Key;
-                rootChild.wins += child.Key.wins;
-                rootChild.plays += child.Key.plays;
-              }
+          for (int i = 0; i < monte_carlo_runs; i++)
+          {
+            //Get a random with a new seed for every run
+            // System.Random r = new System.Random(System.Guid.NewGuid().GetHashCode());
+            for(int j = 0; j < simulatedFields.Length; j++)
+            {
+              int result = Simulate(simulatedFields[j].Clone(), new System.Random());
+              // Debug.Log("Result: " + result);
+              scores[j].Add(result);
             }
-
-            log = log.Remove(log.Length-3, 3);
-            log += " )\n";
           }
 
-          /****************************/
-          /***** Log final result *****/
-          /****************************/
-
-          string log2 = "( ";
-          foreach (var child in rootNode.children) {
-            if (log_column)
-              log2 += child.Value + ": ";
-            log2 += (int) ( ((double) child.Key.wins / (double) child.Key.plays) * 100) + "% | ";
+          int[] totals = new int[scores.Length];
+          for (int i = 0; i < totals.Length; i++)
+          {
+            totals[i] = scores[i].Sum(x => x);
           }
-          log2 = log2.Remove(log2.Length-3, 3);
-          log2 += " )\n";
-          log2 += "*********************************************\n";
-          Debug.Log (log);
-          Debug.Log (log2);
+          Debug.Log("Scores " + string.Join(", ", totals));
+          //Then what?
+          int max = totals[0];
+          int maxpos = 0;
+          for (int i = 1; i < totals.Length; i++)
+          {
+            if (totals[i] > max)
+            {
+              max = totals[i];
+              maxpos = i;
+            }
+          }
 
-          /****************************/
-
-          column = rootNode.MostSelectedMove ();
+          chosenColumn = moves[maxpos]; 
         }
         else
-          column = field.GetRandomMove ();
-					
-        spawnPos = new Vector3 (column, 0, 0);
+        {
+          chosenColumn = field.GetRandomMove(); 
+        }
+        
       }
+
+      // if (!field.IsPlayersTurn) {
+      //
+      //   int column;
+      //
+      //
+      //   // Inutile de lancer MCST le premier tour
+      //   if (field.PiecesNumber != 0) {
+      //     // One event is used for each MCTS.
+      //     ManualResetEvent[] doneEvents = new ManualResetEvent[parallelProcesses];
+      //     MonteCarloSearchTree[] trees = new MonteCarloSearchTree[parallelProcesses];
+      //
+      //     for (int i = 0; i < parallelProcesses; i++) {
+      //       doneEvents [i] = new ManualResetEvent (false);
+      //       trees[i] = new MonteCarloSearchTree (field, doneEvents [i], MCTS_Iterations);
+      //       ThreadPool.QueueUserWorkItem( new WaitCallback(ExpandTree), trees [i]);
+      //     }
+				  //
+      //     WaitHandle.WaitAll(doneEvents);
+      //
+      //     //regrouping all results
+      //     Node rootNode = new Node ();
+      //     string log = "";
+      //
+      //     for (int i = 0; i < parallelProcesses; i++) {
+      //
+      //       log += "( ";
+      //       var sortedChildren = (List<KeyValuePair<Node, int>>)trees [i].rootNode.children.ToList ();
+      //       sortedChildren.Sort((pair1,pair2) => pair1.Value.CompareTo(pair2.Value));
+      //
+      //       foreach (var child in sortedChildren) {
+      //
+      //         if (log_column)
+      //           log += child.Value + ": ";
+      //         log += (int) ( ((double) child.Key.wins / (double) child.Key.plays) * 100) + "% | ";
+      //
+      //         if (!rootNode.children.ContainsValue (child.Value)) {
+      //           Node rootChild = new Node ();
+      //           rootChild.wins = child.Key.wins;
+      //           rootChild.plays = child.Key.plays;
+      //           rootNode.children.Add (rootChild, child.Value);
+      //         } else {
+      //           Node rootChild = rootNode.children.First( p => p.Value == child.Value ).Key;
+      //           rootChild.wins += child.Key.wins;
+      //           rootChild.plays += child.Key.plays;
+      //         }
+      //       }
+      //
+      //       log = log.Remove(log.Length-3, 3);
+      //       log += " )\n";
+      //     }
+      //
+      //     /****************************/
+      //     /***** Log final result *****/
+      //     /****************************/
+      //
+      //     string log2 = "( ";
+      //     foreach (var child in rootNode.children) {
+      //       if (log_column)
+      //         log2 += child.Value + ": ";
+      //       log2 += (int) ( ((double) child.Key.wins / (double) child.Key.plays) * 100) + "% | ";
+      //     }
+      //     log2 = log2.Remove(log2.Length-3, 3);
+      //     log2 += " )\n";
+      //     log2 += "*********************************************\n";
+      //     Debug.Log (log);
+      //     Debug.Log (log2);
+      //
+      //     /****************************/
+      //
+      //     column = rootNode.MostSelectedMove ();
+      //   }
+      //
+      //   column = field.GetRandomMove ();
+      //   spawnPos = new Vector3 (column, 0, 0);
+      // }
 
       GameObject g = Instantiate (
                     field.IsPlayersTurn ? pieceBlue : pieceRed, // is players turn = spawn blue, else spawn red
                     new Vector3 (
-                      Mathf.Clamp (spawnPos.x, 0, numColumns - 1), 
+                      Mathf.Clamp (chosenColumn, 0, numColumns - 1), 
                       gameObjectField.transform.position.y + 1, 0), // spawn it above the first row
                     Quaternion.identity) as GameObject;
 
       return g;
     }
+    
+    public int Simulate (Field simulatedField, System.Random r)
+    {
+      if (simulatedField.CheckForVictory ()) {
+        //Is it the AIs turn?
+        return !simulatedField.IsPlayersTurn ? -1 : 1;
+        // return !simulatedField.IsPlayersTurn ? 1 : -1;
+      }
+      while (simulatedField.ContainsEmptyCell ()) {
+        int column = simulatedField.GetRandomMove (r);
+        simulatedField.DropInColumn (column);
+
+        if (simulatedField.CheckForVictory ()) {
+          //Is it the AI turn?
+          return !simulatedField.IsPlayersTurn ? 1 : -1;
+          // return simulatedField.IsPlayersTurn ? -1 : 1;
+        }
+        simulatedField.SwitchPlayer ();
+      }
+      return 0;
+    }
+
 
     /// <summary>
     /// Expands the tree.
