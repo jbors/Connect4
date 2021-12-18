@@ -14,14 +14,9 @@ namespace ConnectFour
     public int numRows = 4;
     [Range (3, 8)]
     public int numColumns = 4;
-    [Range (1, 8)]
-    public int parallelProcesses = 2;
     [Range (7, 10000)]
     public int monte_carlo_runs = 1000;
-
-    [Tooltip ("Shows column number next to its probability.")]
-    public bool log_column = false;
-
+    
     [Tooltip ("How many pieces have to be connected to win.")]
     public int numPiecesToWin = 4;
 
@@ -32,6 +27,7 @@ namespace ConnectFour
 
     // Gameobjects
     public GameObject pieceRed;
+    // PieceBlue is actually yellow, just to keep it confusing :/
     public GameObject pieceBlue;
     public GameObject pieceField;
 
@@ -158,10 +154,10 @@ namespace ConnectFour
           {
             //Get a random with a new seed for every run
             // System.Random r = new System.Random(System.Guid.NewGuid().GetHashCode());
+            
             for(int j = 0; j < simulatedFields.Length; j++)
             {
               int result = Simulate(simulatedFields[j].Clone(), new System.Random());
-              // Debug.Log("Result: " + result);
               scores[j].Add(result);
             }
           }
@@ -172,7 +168,8 @@ namespace ConnectFour
             totals[i] = scores[i].Sum(x => x);
           }
           Debug.Log("Scores " + string.Join(", ", totals));
-          //Then what?
+          
+          // Pick the move with the best score
           int max = totals[0];
           int maxpos = 0;
           for (int i = 1; i < totals.Length; i++)
@@ -192,83 +189,7 @@ namespace ConnectFour
         }
         
       }
-
-      // if (!field.IsPlayersTurn) {
-      //
-      //   int column;
-      //
-      //
-      //   // Inutile de lancer MCST le premier tour
-      //   if (field.PiecesNumber != 0) {
-      //     // One event is used for each MCTS.
-      //     ManualResetEvent[] doneEvents = new ManualResetEvent[parallelProcesses];
-      //     MonteCarloSearchTree[] trees = new MonteCarloSearchTree[parallelProcesses];
-      //
-      //     for (int i = 0; i < parallelProcesses; i++) {
-      //       doneEvents [i] = new ManualResetEvent (false);
-      //       trees[i] = new MonteCarloSearchTree (field, doneEvents [i], MCTS_Iterations);
-      //       ThreadPool.QueueUserWorkItem( new WaitCallback(ExpandTree), trees [i]);
-      //     }
-				  //
-      //     WaitHandle.WaitAll(doneEvents);
-      //
-      //     //regrouping all results
-      //     Node rootNode = new Node ();
-      //     string log = "";
-      //
-      //     for (int i = 0; i < parallelProcesses; i++) {
-      //
-      //       log += "( ";
-      //       var sortedChildren = (List<KeyValuePair<Node, int>>)trees [i].rootNode.children.ToList ();
-      //       sortedChildren.Sort((pair1,pair2) => pair1.Value.CompareTo(pair2.Value));
-      //
-      //       foreach (var child in sortedChildren) {
-      //
-      //         if (log_column)
-      //           log += child.Value + ": ";
-      //         log += (int) ( ((double) child.Key.wins / (double) child.Key.plays) * 100) + "% | ";
-      //
-      //         if (!rootNode.children.ContainsValue (child.Value)) {
-      //           Node rootChild = new Node ();
-      //           rootChild.wins = child.Key.wins;
-      //           rootChild.plays = child.Key.plays;
-      //           rootNode.children.Add (rootChild, child.Value);
-      //         } else {
-      //           Node rootChild = rootNode.children.First( p => p.Value == child.Value ).Key;
-      //           rootChild.wins += child.Key.wins;
-      //           rootChild.plays += child.Key.plays;
-      //         }
-      //       }
-      //
-      //       log = log.Remove(log.Length-3, 3);
-      //       log += " )\n";
-      //     }
-      //
-      //     /****************************/
-      //     /***** Log final result *****/
-      //     /****************************/
-      //
-      //     string log2 = "( ";
-      //     foreach (var child in rootNode.children) {
-      //       if (log_column)
-      //         log2 += child.Value + ": ";
-      //       log2 += (int) ( ((double) child.Key.wins / (double) child.Key.plays) * 100) + "% | ";
-      //     }
-      //     log2 = log2.Remove(log2.Length-3, 3);
-      //     log2 += " )\n";
-      //     log2 += "*********************************************\n";
-      //     Debug.Log (log);
-      //     Debug.Log (log2);
-      //
-      //     /****************************/
-      //
-      //     column = rootNode.MostSelectedMove ();
-      //   }
-      //
-      //   column = field.GetRandomMove ();
-      //   spawnPos = new Vector3 (column, 0, 0);
-      // }
-
+      
       GameObject g = Instantiate (
                     field.IsPlayersTurn ? pieceBlue : pieceRed, // is players turn = spawn blue, else spawn red
                     new Vector3 (
@@ -278,13 +199,12 @@ namespace ConnectFour
 
       return g;
     }
-    
-    public int Simulate (Field simulatedField, System.Random r)
+
+    private int Simulate (Field simulatedField, System.Random r)
     {
       if (simulatedField.CheckForVictory ()) {
-        //Is it the AIs turn?
+        //Is it the AI turn?
         return !simulatedField.IsPlayersTurn ? -1 : 1;
-        // return !simulatedField.IsPlayersTurn ? 1 : -1;
       }
       while (simulatedField.ContainsEmptyCell ()) {
         int column = simulatedField.GetRandomMove (r);
@@ -293,40 +213,14 @@ namespace ConnectFour
         if (simulatedField.CheckForVictory ()) {
           //Is it the AI turn?
           return !simulatedField.IsPlayersTurn ? 1 : -1;
-          // return simulatedField.IsPlayersTurn ? -1 : 1;
         }
         simulatedField.SwitchPlayer ();
       }
+      
+      //No more moves possible, draw
       return 0;
     }
-
-
-    /// <summary>
-    /// Expands the tree.
-    /// </summary>
-    /// <returns>Root node of the tree.</returns>
-		public static void ExpandTree (System.Object t)
-    {
-      var tree = (MonteCarloSearchTree) t;
-      tree.simulatedStateField = tree.currentStateField.Clone ();
-      tree.rootNode = new Node (tree.simulatedStateField.IsPlayersTurn);
-
-      Node selectedNode;
-      Node expandedNode;
-			System.Random r = new System.Random (System.Guid.NewGuid().GetHashCode());
-
-      for (int i = 0; i < tree.nbIteration; i++) {
-        // copie profonde
-        tree.simulatedStateField = tree.currentStateField.Clone ();
-
-        selectedNode = tree.rootNode.SelectNodeToExpand (tree.rootNode.plays, tree.simulatedStateField);
-        expandedNode = selectedNode.Expand (tree.simulatedStateField, r);
-        expandedNode.BackPropagate (expandedNode.Simulate (tree.simulatedStateField, r));
-      }
-
-      tree.doneEvent.Set ();
-    }
-
+    
     void UpdatePlayAgainButton ()
     {
       RaycastHit hit;
