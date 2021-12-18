@@ -88,7 +88,7 @@ namespace ConnectFour
       }
     }
   	
-    // Renvoie la liste des cases où le joueur peut ajouter une pièce
+    // List of possible cells to play in
     public Dictionary<int, int> GetPossibleCells ()
     {
       Dictionary<int, int> possibleCells = new Dictionary<int, int> ();
@@ -103,7 +103,7 @@ namespace ConnectFour
       return possibleCells;
     }
 
-    // Renvoie la liste des colonnes où le joueur peut lâcher une pièce
+    // Get columns that are not full yet
     public List<int> GetPossibleDrops ()
     {
       List<int> possibleDrops = new List<int> ();
@@ -118,7 +118,7 @@ namespace ConnectFour
       return possibleDrops;
     }
      
-    // renvoie un mouvement aléatoire parmi tous ceux possibles
+    // Randomly select from possible moves
     public int GetRandomMove ()
     {
       List<int> moves = GetPossibleDrops ();
@@ -130,7 +130,7 @@ namespace ConnectFour
       return -1;
     }
 
-		// renvoie un mouvement aléatoire parmi tous ceux possibles
+		// Randomly select from possible moves
 		public int GetRandomMove (System.Random r)
 		{
 			List<int> moves = GetPossibleDrops ();
@@ -141,7 +141,7 @@ namespace ConnectFour
 			return -1;
 		}
 
-    // Lâche une pièce dans la colonne i, renvoie la ligne où elle tombe
+    // Drop a piece in specified column
     public int DropInColumn (int col)
     {
       for (int i = numRows - 1; i >= 0; i--) {
@@ -156,13 +156,13 @@ namespace ConnectFour
       return -1;
     }
 
-    // Alterne de joueur
+    // Switch to the other player
     public void SwitchPlayer ()
     {
       isPlayersTurn = !isPlayersTurn;
     }
 
-    // Vérifie si la partie est gagnée (se référer à isPlayerTurn pour savoir qui est le gagnant)
+    // Check if the game is won (refer to isPlayerTurn to find out who is the winner)
     public bool CheckForWinner ()
     {
       for (int x = 0; x < numColumns; x++) {
@@ -229,7 +229,7 @@ namespace ConnectFour
       return false;
     }
 
-    // Vérifie si la partie a été gagné en spécifiance quel est le dernier pion joué
+    // Check if the game was won on the last move
     public bool CheckForVictory ()
     {
       int colour = field [dropColumn, dropRow];
@@ -332,13 +332,13 @@ namespace ConnectFour
       return false;
     }
 
-    // Vérifie si la grille contient encore des cellules vides
+    // Are there still empty spaces to play in
     public bool ContainsEmptyCell ()
     {
       return (piecesNumber < numRows * numColumns);
     }
 
-    // Execute une copie profonde de l'état du jeu
+    // Make a deep copy of the field
     public Field Clone ()
     {
       return new Field (numRows, numColumns, numPiecesToWin, allowDiagonally, isPlayersTurn, piecesNumber, field);
