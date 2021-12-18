@@ -1,9 +1,8 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
+using UnityEngine.Serialization;
 
 namespace ConnectFour
 {
@@ -14,8 +13,8 @@ namespace ConnectFour
     public int numRows = 4;
     [Range (3, 8)]
     public int numColumns = 4;
-    [Range (7, 10000)]
-    public int monte_carlo_runs = 1000;
+
+    public int monteCarloRuns = 1000;
     
     [Tooltip ("How many pieces have to be connected to win.")]
     public int numPiecesToWin = 4;
@@ -150,7 +149,7 @@ namespace ConnectFour
             scores[i] = new List<int>();
           }
 
-          for (int i = 0; i < monte_carlo_runs; i++)
+          for (int i = 0; i < monteCarloRuns; i++)
           {
             //Get a random with a new seed for every run
             // System.Random r = new System.Random(System.Guid.NewGuid().GetHashCode());
